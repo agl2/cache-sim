@@ -3,32 +3,51 @@
 #include <string.h>
 #include "cache.h"
 #include "memory.h"
-#define CACHE_SIZE 32
+#define CACHE_SIZE 128
 #define BLOCK_SIZE 4
 #define NUMBER_OF_SETS 1
 #define MEMORY_INPUT_FN "mem_gen/mem.dmp"
 #define MEMORY_OUTPUT_FN "mem_output.dmp"
 #define CACHE_OUTPUT_FN "cache.dmp"
-#define CACHE_DUMP_FILE
 #define MAIN_MEM_SIZE 128
-
 int main()
 {
-    cache_t cache;
+    cache_t* cache = (cache_t*) malloc(sizeof(cache_t));
     byte_t* main_mem;
 
-    set_cache_params(&cache, CACHE_SIZE, BLOCK_SIZE, NUMBER_OF_SETS);
-    init_cache(&cache);
+    set_cache_params(cache, CACHE_SIZE, BLOCK_SIZE, NUMBER_OF_SETS);
+    init_cache(cache);
 
     printf("word size: %d bits\n", sizeof(word_t)*8);
     printf("byte size: %d bits\n", sizeof(byte_t)*8);
     printf("mem_addr_t size: %d bits\n", sizeof(mem_addr_t)*8);
     printf("boolean size: %d bits\n", sizeof(boolean)*8);
+    printf("tag size: %d bits\n", cache->n_tag_bits);
+    printf("block size: %d bits\n", cache->n_line_bits);
+    printf("offset size: %d bits\n", cache->n_offset_bits);
+
+    mem_addr_t addr = 0xFFFF2211;
+
+    unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
+    unsigned line = (addr << cache->n_tag_bits) >> (cache->n_tag_bits + cache->n_offset_bits);
+    unsigned offset = (addr << (cache->n_tag_bits + cache->n_line_bits)) >> (cache->n_tag_bits + cache->n_line_bits);
+
+    printf("tag: %x\n", tag);
+    printf("line: %x\n", line);
+    printf("offset: %x\n", offset);
 
     main_mem = mem_load(MEMORY_INPUT_FN, MAIN_MEM_SIZE);
 
-    cache_dump_file(&cache);
+    for(int i = 0; i < 256; i++) {
+        printf("Random Replace: %d\n", i);
+        mem_addr_t addr = (mem_addr_t) rand()%MAIN_MEM_SIZE;
+        if(!find_block(cache, &addr, MAIN_MEM_SIZE)) {
+            printf("Address: %.8x not in memory range", addr);
+        }
+        random_replace(main_mem, cache, addr);
+    }
 
-    mem_dump_file(main_mem, MEMORY_OUTPUT_FN, MAIN_MEM_SIZE);
+    cache_dump_file(cache);
+    //mem_dump_file(main_mem, MEMORY_OUTPUT_FN, MAIN_MEM_SIZE);
     return 0;
 }
