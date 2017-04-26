@@ -9,7 +9,17 @@
 #define MEMORY_INPUT_FN "mem_gen/mem.dmp"
 #define MEMORY_OUTPUT_FN "mem_output.dmp"
 #define CACHE_OUTPUT_FN "cache.dmp"
-#define MAIN_MEM_SIZE 128
+#define MAIN_MEM_SIZE 1024
+
+void address_split_show(mem_addr_t addr) {
+    unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
+    unsigned line = (addr << cache->n_tag_bits) >> (cache->n_tag_bits + cache->n_offset_bits);
+    unsigned offset = (addr << (cache->n_tag_bits + cache->n_line_bits)) >> (cache->n_tag_bits + cache->n_line_bits);
+
+    printf("tag: %x\n", tag);
+    printf("line: %x\n", line);
+    printf("offset: %x\n", offset);
+}
 
 int main()
 {
@@ -27,17 +37,10 @@ int main()
     printf("block size: %d bits\n", cache->n_line_bits);
     printf("offset size: %d bits\n", cache->n_offset_bits);
 
-    mem_addr_t addr = 0xFFFF2211;
-
-    unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
-    unsigned line = (addr << cache->n_tag_bits) >> (cache->n_tag_bits + cache->n_offset_bits);
-    unsigned offset = (addr << (cache->n_tag_bits + cache->n_line_bits)) >> (cache->n_tag_bits + cache->n_line_bits);
-
-    printf("tag: %x\n", tag);
-    printf("line: %x\n", line);
-    printf("offset: %x\n", offset);
 
     main_mem = mem_load(MEMORY_INPUT_FN, MAIN_MEM_SIZE);
+
+
 
     /*for(int i = 0; i < 64; i++) {
         printf("Random Replace: %d\n", i);
@@ -48,7 +51,7 @@ int main()
         random_replace(main_mem, cache, addr);
     }*/
 
-    for(int i = 0; i < 64; i++) {
+    /*for(int i = 0; i < 64; i++) {
         printf("Fifo Replace: %d\n", i);
         mem_addr_t addr = (mem_addr_t) rand()%MAIN_MEM_SIZE;
         if(!find_block(cache, &addr, MAIN_MEM_SIZE)) {
@@ -56,9 +59,9 @@ int main()
             exit(3);
         }
         fifo_replace(main_mem, cache, addr);
-    }
+    }*/
 
     cache_dump_file(cache);
-    //mem_dump_file(main_mem, MEMORY_OUTPUT_FN, MAIN_MEM_SIZE);
+    mem_dump_file(main_mem, MEMORY_OUTPUT_FN, MAIN_MEM_SIZE);
     return 0;
 }

@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define MEM_SIZE_BYTES 128
+#include <time.h>
+#define MEM_SIZE_BYTES 1024
 
 int main(void)
 {
+
+    srand(time(NULL));   // should only be called once
     int counter;
     int *ptr_d;
     FILE *ptr_fp;
