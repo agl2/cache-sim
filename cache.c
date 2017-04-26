@@ -246,6 +246,7 @@ boolean fifo_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr) {
         }
         cdb_ptr = alloc_cdb (cache, main_mem + addr , cdb_ptr_buff->set_number, tag);
         cdb_ptr->next = cache->c_line_head[line];
+        cache->c_line_head[line]->prev = cdb_ptr;
         cache->c_line_head[line] = cdb_ptr;
         cdb_ptr_buff->prev->next = NULL;
         replaced = TRUE;
