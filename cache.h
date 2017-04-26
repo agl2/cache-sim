@@ -39,7 +39,7 @@ boolean random_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr);
 
 void lru_replace(byte_t* , cache_t* , mem_addr_t );
 
-void fifo_replace(byte_t* , cache_t* , mem_addr_t );
+boolean fifo_replace(byte_t* , cache_t* , mem_addr_t );
 
 void cache_dump_file (cache_t* );
 

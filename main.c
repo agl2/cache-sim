@@ -3,13 +3,14 @@
 #include <string.h>
 #include "cache.h"
 #include "memory.h"
-#define CACHE_SIZE 128
+#define CACHE_SIZE 32
 #define BLOCK_SIZE 4
-#define NUMBER_OF_SETS 1
+#define NUMBER_OF_SETS 2
 #define MEMORY_INPUT_FN "mem_gen/mem.dmp"
 #define MEMORY_OUTPUT_FN "mem_output.dmp"
 #define CACHE_OUTPUT_FN "cache.dmp"
 #define MAIN_MEM_SIZE 128
+
 int main()
 {
     cache_t* cache = (cache_t*) malloc(sizeof(cache_t));
@@ -38,13 +39,23 @@ int main()
 
     main_mem = mem_load(MEMORY_INPUT_FN, MAIN_MEM_SIZE);
 
-    for(int i = 0; i < 256; i++) {
+    /*for(int i = 0; i < 64; i++) {
         printf("Random Replace: %d\n", i);
         mem_addr_t addr = (mem_addr_t) rand()%MAIN_MEM_SIZE;
         if(!find_block(cache, &addr, MAIN_MEM_SIZE)) {
             printf("Address: %.8x not in memory range", addr);
         }
         random_replace(main_mem, cache, addr);
+    }*/
+
+    for(int i = 0; i < 64; i++) {
+        printf("Fifo Replace: %d\n", i);
+        mem_addr_t addr = (mem_addr_t) rand()%MAIN_MEM_SIZE;
+        if(!find_block(cache, &addr, MAIN_MEM_SIZE)) {
+            printf("Address: %.8x not in memory range", addr);
+            exit(3);
+        }
+        fifo_replace(main_mem, cache, addr);
     }
 
     cache_dump_file(cache);

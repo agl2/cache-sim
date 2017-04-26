@@ -84,12 +84,31 @@ boolean store (cache_t* cache, mem_addr_t addr, word_t data) {
     return found;
 }
 
-c_data_block_t* alloc_cdb (cache_t* cache, const byte_t* data, unsigned set_number, unsigned tag) {
+
+/**
+* @name: alloc_cdb
+* @params:  cache: Pointer to instance of cache struct
+*           data: Pointer to initial byte of block to be inserted
+*           set_number: Number of cache set where the block will be inserted
+*           tag: Tag bits to be stored
+* @description: Creates a cache data block
+*/
+c_data_block_t* alloc_cdb (cache_t* cache, const byte_t* data, unsigned set_number, mem_addr_t tag) {
 
     c_data_block_t* c_data_node;
 
     c_data_node = (c_data_block_t*) malloc(sizeof(c_data_block_t));
+    if(!c_data_node)
+    {
+        printf("Memory allocation error while allocating c_data_node in function alloc_cdb \n");
+        exit(1);
+    }
     c_data_node->cdb_data = (byte_t*) malloc(sizeof(byte_t)*cache->block_size);
+    if(!c_data_node)
+    {
+        printf("Memory allocation error while allocating c_data_node->cdb_data in function alloc_cdb \n");
+        exit(1);
+    }
     c_data_node->cdb_tag = tag;
     c_data_node->cdb_valid = FALSE;
     c_data_node->next = NULL;
@@ -100,17 +119,26 @@ c_data_block_t* alloc_cdb (cache_t* cache, const byte_t* data, unsigned set_numb
     return c_data_node;
 }
 
-
+/**
+* @name: random_replace
+* @params:  main_mem: Pointer to main memory initial position
+*           cache: Pointer to instance of cache struct
+*           addr: Address of block to be inserted in cache
+* @description: Inserts a block in cache replacing an older one randomly
+*/
 boolean random_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr)  {
 
+    ///Split the address bits in tag and line
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
     unsigned line = (addr << cache->n_tag_bits) >> (cache->n_tag_bits + cache->n_offset_bits);
 
     boolean replaced = FALSE;
 
+    ///Create two pointers, one pointing for the head of the first list of data blocks and another buffer to store previous element on the list.
     c_data_block_t *cdb_ptr = cache->c_line_head[line];
     c_data_block_t *cdb_ptr_buff = NULL;
 
+    ///This loop search for a blank position, if there is one, the block is inserted on it.
     for(int i = 0; i < cache->n_sets; i++) {
         if(cdb_ptr == NULL) {
             cdb_ptr = alloc_cdb (cache, main_mem + addr , i, tag);
@@ -129,6 +157,11 @@ boolean random_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr)  {
             cdb_ptr = cdb_ptr->next;
         }
     }
+
+    /**If the previous loop could not find a blank position,
+    * then this block of code randomly selects a block to be replaced
+    * and replaces it references on the list for the new one references
+    */
     c_data_block_t *cdb_ptr_new = NULL;
     if(!replaced) {
         unsigned set_replaced = rand()%cache->n_sets;
@@ -164,8 +197,61 @@ void lru_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr)  {
 
 }
 
-void fifo_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr) {
 
+/**
+* @name: fifo_replace
+* @params:  main_mem: Pointer to main memory initial position
+*           cache: Pointer to instance of cache struct
+*           addr: Address of block to be inserted in cache
+* @description: Inserts a block in cache replacing an older one using FIFO algorithm
+*/
+boolean fifo_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr) {
+    ///Split the address bits in tag and line
+    unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
+    unsigned line = (addr << cache->n_tag_bits) >> (cache->n_tag_bits + cache->n_offset_bits);
+
+    boolean replaced = FALSE;
+
+    ///Create two pointers, one pointing for the head of the first list of data blocks and another buffer to store previous element on the list.
+    c_data_block_t *cdb_ptr = cache->c_line_head[line];
+    c_data_block_t *cdb_ptr_buff = NULL;
+
+    ///This loop search for a blank position, if there is one, the block is inserted on it.
+    for(int i = 0; i < cache->n_sets; i++) {
+        if(cdb_ptr == NULL) {
+            cdb_ptr = alloc_cdb (cache, main_mem + addr , i, tag);
+            if(cdb_ptr_buff != NULL) {
+                cdb_ptr->next = cdb_ptr_buff;
+                cdb_ptr_buff->prev = cdb_ptr;
+            }
+            cdb_ptr->cdb_valid = TRUE;
+            replaced = TRUE;
+            cache->c_line_head[line] = cdb_ptr;
+        }
+        else {
+            cdb_ptr_buff = cdb_ptr;
+            cdb_ptr = cdb_ptr->next;
+        }
+    }
+
+    /**If the previous loop could not find a blank position,
+    * then this block of code selects the older data block in the cache line
+    * and replaces it references on the list for the new one references
+    */
+    if(!replaced) {
+        cdb_ptr_buff = cache->c_line_head[line];
+        ///Gets the last element from the list
+        while(cdb_ptr_buff->next != NULL) {
+                cdb_ptr_buff = cdb_ptr_buff->next;
+        }
+        cdb_ptr = alloc_cdb (cache, main_mem + addr , cdb_ptr_buff->set_number, tag);
+        cdb_ptr->next = cache->c_line_head[line];
+        cache->c_line_head[line] = cdb_ptr;
+        cdb_ptr_buff->prev->next = NULL;
+        replaced = TRUE;
+        free(cdb_ptr_buff);
+    }
+    return replaced;
 }
 
 void cache_dump_file (cache_t* cache) {
@@ -223,8 +309,8 @@ void cache_dump_file (cache_t* cache) {
                 cdb_ptr = cdb_ptr->next;
             }
         }
-        fclose(ptr_fp);
     }
+    fclose(ptr_fp);
 }
 
 
