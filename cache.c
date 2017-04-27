@@ -42,7 +42,7 @@ void init_cache(cache_t* cache) {
     }
 }
 
-boolean load (cache_t* cache, mem_addr_t addr, word_t* data_conteiner) {
+boolean load (cache_t* cache, mem_addr_t addr, word_t* p_register) {
 
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
     unsigned line = (addr << cache->n_tag_bits) >> (cache->n_tag_bits + cache->n_offset_bits);
@@ -56,15 +56,15 @@ boolean load (cache_t* cache, mem_addr_t addr, word_t* data_conteiner) {
         if(cdb_ptr->cdb_valid && cdb_ptr->cdb_tag == tag) {
             found = TRUE;
             cache->read_hit_count++;
-            memcpy(data_conteiner, cdb_ptr->cdb_data + offset, sizeof(word_t));
-            *((int32_t*)data_conteiner) = bswap_32(*((int32_t*)data_conteiner));
+            memcpy(p_register, cdb_ptr->cdb_data + offset, sizeof(word_t));
+            *((int32_t*)p_register) = bswap_32(*((int32_t*)p_register));
         }
         cdb_ptr = cdb_ptr->next;
     }
     return found;
 }
 
-boolean store (cache_t* cache, mem_addr_t addr, word_t data) {
+boolean store (cache_t* cache, mem_addr_t addr, word_t* p_register) {
 
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
     unsigned line = (addr << cache->n_tag_bits) >> (cache->n_tag_bits + cache->n_offset_bits);
@@ -78,8 +78,9 @@ boolean store (cache_t* cache, mem_addr_t addr, word_t data) {
         if(cdb_ptr->cdb_valid && cdb_ptr->cdb_tag == tag) {
             found = TRUE;
             cache->write_hit_count++;
-            *((word_t*) cdb_ptr->cdb_data + offset) = data;
 
+            *((int32_t*)p_register) = bswap_32(*((int32_t*)p_register));
+            memcpy(cdb_ptr->cdb_data + offset, p_register, sizeof(word_t));
         }
         cdb_ptr = cdb_ptr->next;
     }
@@ -120,6 +121,11 @@ c_data_block_t* alloc_cdb (cache_t* cache, const byte_t* data, unsigned set_numb
     memcpy(c_data_node->cdb_data, data, cache->block_size);
 
     return c_data_node;
+}
+
+void copy_back (cache_t* cache, c_data_block_t* cdb_ptr, byte_t* main_mem, unsigned line){
+    mem_addr_t addr = (cdb_ptr->cdb_tag << (cache->n_line_bits + cache->n_offset_bits)) + (line << cache->n_offset_bits);
+    memcpy(main_mem + addr, cdb_ptr->cdb_data, cache->block_size);
 }
 
 /**
@@ -183,7 +189,7 @@ boolean random_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr)  {
                 if(cdb_ptr == cache->c_line_head[line]) {
                     cache->c_line_head[line] = cdb_ptr_new;
                 }
-                free(cdb_ptr);
+                copy_back(cache, cdb_ptr, main_mem, line);
                 cdb_ptr = NULL;
                 replaced = TRUE;
 
@@ -253,7 +259,7 @@ boolean fifo_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr) {
         cache->c_line_head[line] = cdb_ptr;
         cdb_ptr_buff->prev->next = NULL;
         replaced = TRUE;
-        free(cdb_ptr_buff);
+        copy_back(cache, cdb_ptr_buff, main_mem, line);
     }
     return replaced;
 }
@@ -318,7 +324,7 @@ void cache_dump_file (cache_t* cache) {
 }
 
 
-boolean find_block(cache_t* cache, mem_addr_t *addr, unsigned mem_size) {
+boolean find_block (cache_t* cache, mem_addr_t *addr, unsigned mem_size) {
 
     for(mem_addr_t block_addr = 0; block_addr < mem_size; block_addr += cache->block_size ) {
         if(*addr >= block_addr && *addr < block_addr + cache->block_size) {
@@ -328,3 +334,16 @@ boolean find_block(cache_t* cache, mem_addr_t *addr, unsigned mem_size) {
     }
     return FALSE;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

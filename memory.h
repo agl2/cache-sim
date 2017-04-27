@@ -2,15 +2,19 @@
 #define MEMORY_H_INCLUDED
 #include <stdio.h>
 #include <stdlib.h>
-#define TRUE 1
-#define FALSE 0
+//#define TRUE 1
+//#define FALSE 0
 
 typedef unsigned int mem_addr_t;
 typedef unsigned char byte_t;
 typedef struct word {
     byte_t bytes[4] ;
 } word_t;
-typedef char boolean;
+
+typedef enum boolean {
+    FALSE,
+    TRUE
+} boolean;
 
 byte_t* mem_load(const char* , const unsigned );
 

@@ -5,11 +5,9 @@
 #include "memory.h"
 
 /**============ CACHE PARAMETERS =============*/
-#define CACHE_SIZE 32
-#define BLOCK_SIZE 4
 #define NUMBER_OF_SETS 2
 #define CACHE_SIZE 32
-#define BLOCK_SIZE 8
+#define BLOCK_SIZE 4
 #define NUMBER_OF_SETS 2
 #define FIFO_REPLACE 0
 #define RANDOM_REPLACE 1
@@ -30,6 +28,14 @@
 #define STORE_INST "ST"
 /**===========================================*/
 
+/**===========  ERROR DEFINITIONS ==================
+*/
+#define MEMORY_ALLOCATION   1
+#define FILE_OPENNING       2
+#define LOGIC_ERROR         3
+#define INPUT_ERROR         4
+/**
+*===================================================*/
 
 void address_split_show(mem_addr_t addr, cache_t* cache) {
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
@@ -67,7 +73,7 @@ int main()
     char* args[2];
     mem_addr_t addr;
     mem_addr_t block_addr;
-    word_t* data_conteiner = (word_t*) malloc(sizeof(word_t));
+    word_t* p_register = (word_t*) malloc(sizeof(word_t));
     int it;
 
 
@@ -89,25 +95,26 @@ int main()
 
     if( (line =(char *)malloc(buffer_size * sizeof(char))) == NULL)
     {
-        printf("Unable to allocate line buffer");
-        exit(1);
+        perror("Error: ");
+        exit(MEMORY_ALLOCATION);
     }
 
     if ( (inst_input_fp = fopen(INST_IN, "r")) == NULL) {
         printf("Unable to open file %s!\n", INST_IN);
-        exit(1);
+        exit(FILE_OPENNING);
     }
 
     if((inst_output_fp = fopen(INST_OUT, "wb")) == NULL)
     {
         printf("Unable to open file %s!\n", INST_OUT);
-        exit(1);
+        exit(FILE_OPENNING);
     }
 
 
     n_line = 0;
     while ((getline(&line, &buffer_size, inst_input_fp)) != -1) {
-        //printf("%s", line);
+        printf("%s", line);
+        fprintf(inst_output_fp, "%s", line);
         inst = strtok (line, " ");
         it = 0;
         while ( (args[it] = strtok (NULL, " ")) != NULL) {
@@ -116,71 +123,80 @@ int main()
         if(strcmp(inst, LOAD_INST) == 0) {
             if(it == 1) {
                 addr = strtol(args[0], NULL ,16);
-                if(load(cache, addr,data_conteiner)) {
-                    fprintf(inst_output_fp, "%s %s : Read value %.8x from address %.8x\n", inst, args[0], *((unsigned*) data_conteiner), addr);
-                    printf("%s %s : Read value %.8x from address %.8x\n", inst, args[0], *((unsigned*) data_conteiner), addr);
+                if(load(cache, addr,p_register)) {
+                    fprintf(inst_output_fp, "--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr);
+                    printf("--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr);
                 }
                 else {
                     block_addr = addr;
                     if(find_block(cache, &block_addr, MAIN_MEM_SIZE)) {
                         if(!replace(main_mem, cache, block_addr)) {
-                            printf("Could not replace block in address %.8x at inst %s line %d\n", block_addr, inst, n_line);
+                            printf("Could not replace block in address %.8x at inst %s on line %d\n", block_addr, inst, n_line);
+                            exit(LOGIC_ERROR);
                         }
                         else {
-                            if(load(cache, addr,data_conteiner)){
-                                fprintf(inst_output_fp, "%s %s: Read value %8x from address %8x\n", inst, args[0], *((unsigned*) data_conteiner), addr);
-                                printf("%s %s : Read value %x from address %.8x\n", inst, args[0], *((unsigned*) data_conteiner), addr);
+                            if(load(cache, addr,p_register)){
+                                fprintf(inst_output_fp, "--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr);
+                                printf("--> Read value %x from address %.8x\n",*((unsigned*) p_register), addr);
                             }
                             else{
                                 printf("Could not read address %.8x from cache for unknown reason at inst %s line %d\n", addr, inst, n_line);
+                                exit(LOGIC_ERROR);
                             }
                         }
                     }
                     else {
                         printf("Address: %.8x not in memory range\n", addr);
+                        exit(LOGIC_ERROR);
                     }
                 }
 
             }
             else {
                 printf("Wrong number of arguments on instruction %s on line %d", LOAD_INST, n_line);
+                exit(LOGIC_ERROR);
             }
         }
         else if (strcmp(inst, STORE_INST) == 0) {
             if(it == 2) {
                 addr = strtol(args[0], NULL ,16);
-                *((unsigned*) data_conteiner) = strtol(args[1], NULL ,16);
-                if(store(cache, addr,*data_conteiner)) {
-                    fprintf(inst_output_fp, "%s %s %s : Written value %.8x on address %.8x\n", inst, args[0], args[1], *((unsigned*) data_conteiner), addr);
-                    printf("%s %s %s : Written value %.8x on address %.8x\n", inst, args[0], args[1], *((unsigned*) data_conteiner), addr);
+                *((unsigned*) p_register) = strtol(args[1], NULL ,16);
+                if(store(cache, addr,p_register)) {
+                    fprintf(inst_output_fp, "--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
+                    printf("--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
                 }
                 else {
                     block_addr = addr;
                     if(find_block(cache, &block_addr, MAIN_MEM_SIZE)) {
                         if(!replace(main_mem, cache, block_addr)) {
                             printf("Could not replace block in address %x at inst %s line %d\n", block_addr, inst, n_line);
+                            exit(LOGIC_ERROR);
                         }
                         else {
-                            if(store(cache, addr,*data_conteiner)) {
-                                fprintf(inst_output_fp, "%s %s %s : Written value %.8x on address %.8x\n", inst, args[0], args[1], *((unsigned*) data_conteiner), addr);
-                                printf("%s %s %s : Written value %.8x on address %.8x\n", inst, args[0], args[1], *((unsigned*) data_conteiner), addr);
+                            if(store(cache, addr,p_register)) {
+                                fprintf(inst_output_fp, "--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
+                                printf("--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
                             }
                             else{
                                 printf("Could not read address %.8x from cache for unknown reason at inst %s line %d\n", addr, inst, n_line);
+                                exit(LOGIC_ERROR);
                             }
                         }
                     }
                     else {
                         printf("Address: %.8x not in memory range\n", addr);
+                        exit(LOGIC_ERROR);
                     }
                 }
             }
             else {
                 printf("Wrong number of arguments on instruction %s on line %d\n", STORE_INST, n_line);
+                exit(LOGIC_ERROR);
             }
         }
         else {
             printf("Instruction %s not implemented on line %d\n", inst, n_line);
+            exit(LOGIC_ERROR);
         }
         n_line++;
     }

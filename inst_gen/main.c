@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#define N_INST 32
 #define LOAD_TYPE 0
 #define STORE_TYPE 1
 #define LOAD_INST "LD"
 #define STORE_INST "ST"
 #define INST_FILENAME "inst.in"
+#define N_INST 32
 #define MAIN_MEM_SIZE 1024
 
 int main()
@@ -24,7 +24,7 @@ int main()
 
     for(int i = 0; i < N_INST;  i++) {
         //inst_type = rand()%2;
-        inst_type = LOAD_TYPE;
+        inst_type = STORE_TYPE;
         address = 4*(rand()%(MAIN_MEM_SIZE/4));
         value = rand();
 
