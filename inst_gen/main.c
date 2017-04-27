@@ -4,9 +4,10 @@
 #define N_INST 32
 #define LOAD_TYPE 0
 #define STORE_TYPE 1
-#define LOAD_INST "LOAD"
-#define STORE_INST "STORE"
-#define INST_FILENAME "32inst.ins"
+#define LOAD_INST "LD"
+#define STORE_INST "ST"
+#define INST_FILENAME "inst.in"
+#define MAIN_MEM_SIZE 1024
 
 int main()
 {
@@ -15,25 +16,25 @@ int main()
     int inst_type;
     int address;
     int value;
-    char filename[20] = "32inst.ins";
 
-    if((ptr_fp = fopen(filename, "wb")) == NULL) {
-        printf("Unable to open file %s!\n", filename);
+    if((ptr_fp = fopen(INST_FILENAME, "wb")) == NULL) {
+        printf("Unable to open file %s!\n", INST_FILENAME);
         exit(1);
     }
 
-    for(int i; i < N_INST;  i++) {
-        inst_type = rand()%2;
-        address = rand();
+    for(int i = 0; i < N_INST;  i++) {
+        //inst_type = rand()%2;
+        inst_type = LOAD_TYPE;
+        address = 4*(rand()%(MAIN_MEM_SIZE/4));
         value = rand();
 
         if(inst_type == LOAD_TYPE) {
-            if( fprintf(ptr_fp, "%s %x\n", LOAD_INST, address) <0) {
+            if( fprintf(ptr_fp, "%s %.8x\n", LOAD_INST, address) <0) {
                 printf("Error writing file line %d\n", i);
                 exit(1);
             }
         }else {
-            if( fprintf(ptr_fp, "%s %x, %x\n", STORE_INST, address, value) <0) {
+            if( fprintf(ptr_fp, "%s %.8x %.8x\n", STORE_INST, address, value) <0) {
                 printf("Error writing file line %d\n", i);
                 exit(1);
             }

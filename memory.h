@@ -7,7 +7,9 @@
 
 typedef unsigned int mem_addr_t;
 typedef unsigned char byte_t;
-typedef int word_t;
+typedef struct word {
+    byte_t bytes[4] ;
+} word_t;
 typedef char boolean;
 
 byte_t* mem_load(const char* , const unsigned );

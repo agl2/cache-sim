@@ -33,6 +33,7 @@ void set_cache_params(cache_t*, unsigned, unsigned, unsigned);
 void init_cache(cache_t*);
 
 boolean load (cache_t*, mem_addr_t, word_t*);
+
 boolean store (cache_t*, mem_addr_t, word_t);
 
 boolean random_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr);

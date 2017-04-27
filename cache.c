@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include <byteswap.h>
 #include "cache.h"
 
 void set_cache_params(cache_t* cache, unsigned cache_size, unsigned block_size,  unsigned n_sets) {
@@ -55,7 +56,8 @@ boolean load (cache_t* cache, mem_addr_t addr, word_t* data_conteiner) {
         if(cdb_ptr->cdb_valid && cdb_ptr->cdb_tag == tag) {
             found = TRUE;
             cache->read_hit_count++;
-            *data_conteiner = cdb_ptr->cdb_data[offset];
+            memcpy(data_conteiner, cdb_ptr->cdb_data + offset, sizeof(word_t));
+            *((int32_t*)data_conteiner) = bswap_32(*((int32_t*)data_conteiner));
         }
         cdb_ptr = cdb_ptr->next;
     }
@@ -76,7 +78,8 @@ boolean store (cache_t* cache, mem_addr_t addr, word_t data) {
         if(cdb_ptr->cdb_valid && cdb_ptr->cdb_tag == tag) {
             found = TRUE;
             cache->write_hit_count++;
-            cdb_ptr->cdb_data[offset] = data;
+            *((word_t*) cdb_ptr->cdb_data + offset) = data;
+
         }
         cdb_ptr = cdb_ptr->next;
     }
@@ -317,8 +320,8 @@ void cache_dump_file (cache_t* cache) {
 
 boolean find_block(cache_t* cache, mem_addr_t *addr, unsigned mem_size) {
 
-    for(mem_addr_t block_addr = 0; block_addr < mem_size-1; block_addr += cache->block_size ) {
-        if(*addr >= block_addr && *addr <= block_addr + cache->block_size) {
+    for(mem_addr_t block_addr = 0; block_addr < mem_size; block_addr += cache->block_size ) {
+        if(*addr >= block_addr && *addr < block_addr + cache->block_size) {
             *addr = block_addr;
             return TRUE;
         }
