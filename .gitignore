@@ -5,3 +5,8 @@
 *.depend
 bin/*
 obj/*
+mem_gen/bin/*
+mem_gen/obj/*
+inst_gen/obj/*
+inst_gen/bin/*
+
