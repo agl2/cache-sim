@@ -82,6 +82,20 @@ boolean store (cache_t* cache, mem_addr_t addr, word_t* p_register) {
 }
 
 
+boolean find_block (cache_t* cache, mem_addr_t *addr, unsigned mem_size) {
+
+    for(mem_addr_t block_addr = 0; block_addr < mem_size; block_addr += cache->block_size ) {
+        if(*addr >= block_addr && *addr < block_addr + cache->block_size) {
+            *addr = block_addr;
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+
+
+
 /**
 * @name: alloc_cdb
 * @params:  cache: Pointer to instance of cache struct
@@ -119,7 +133,26 @@ c_data_block_t* alloc_cdb (cache_t* cache, const word_t* data, unsigned set_numb
 void copy_back (cache_t* cache, c_data_block_t* cdb_ptr, word_t* main_mem, unsigned line){
     mem_addr_t addr = (cdb_ptr->cdb_tag << (cache->n_line_bits + cache->n_offset_bits)) + (line << cache->n_offset_bits);
     memcpy(main_mem + addr, cdb_ptr->cdb_data, cache->block_size);
+    free(cdb_ptr);
 }
+
+void copy_back_all(cache_t* cache, byte_t* main_mem) {
+
+    c_data_block_t* cdb_ptr = NULL;
+    c_data_block_t* cdb_ptr_next = NULL;
+
+    for(int i = 0; i < cache->n_lines_per_set; i++) {
+
+        cdb_ptr = cache->c_line_head[i];
+        while(cdb_ptr != NULL) {
+            cdb_ptr_next = cdb_ptr->next;
+            copy_back(cache, cdb_ptr, main_mem, i);
+            cdb_ptr = cdb_ptr_next;
+        }
+    }
+
+}
+
 
 /**
 * @name: random_replace
@@ -246,12 +279,21 @@ boolean fifo_replace(word_t* main_mem, cache_t* cache, mem_addr_t addr) {
         while(cdb_ptr_buff->next != NULL) {
                 cdb_ptr_buff = cdb_ptr_buff->next;
         }
+        ///Allocates a new data block
         cdb_ptr = alloc_cdb (cache, main_mem + addr , cdb_ptr_buff->set_number, tag);
+        ///Points to the first element on the list
         cdb_ptr->next = cache->c_line_head[line];
+        ///Points the current head of the list previous pointer to the new element
         cache->c_line_head[line]->prev = cdb_ptr;
+        ///Points the head of the list to the new element
         cache->c_line_head[line] = cdb_ptr;
+        ///Points the next of new last element of the list to null
         cdb_ptr_buff->prev->next = NULL;
+        ///Set valid bit to 1
+        cdb_ptr->cdb_valid = TRUE;
+        ///Set replaced to true
         replaced = TRUE;
+
         copy_back(cache, cdb_ptr_buff, main_mem, line);
     }
     return replaced;
@@ -263,6 +305,16 @@ void cache_dump_file (cache_t* cache) {
     unsigned n_sets = cache->n_sets;
     unsigned n_lines = cache->n_lines_per_set;
     unsigned block_size = cache->block_size;
+
+    unsigned n_reads = cache->read_count;
+    unsigned n_writes = cache->write_count;
+    unsigned n_access = n_reads + n_writes;
+    unsigned n_read_misses = n_reads - cache->read_hit_count;
+    unsigned n_read_hits = cache->read_hit_count;
+    unsigned n_write_misses = n_writes - cache->write_hit_count;
+    unsigned n_write_hits = cache->write_hit_count;
+    unsigned n_miss_rate = (n_write_misses + n_read_misses)/n_access;
+    unsigned n_hit_rate = (n_write_hits + n_read_hits)/n_access;
 
     char filename[20];
     strcpy(filename, "cache.dmp");
@@ -296,14 +348,23 @@ void cache_dump_file (cache_t* cache) {
                         exit(1);
                     }
                     for(unsigned k = 0; k < block_size; k++) {
-
-                        if( fprintf(ptr_fp, "%.2x", cdb_ptr->cdb_data[k] ) < 0) {
-                            printf("Write cache file dump error in:");
-                            printf("\tset %d line %d byte %d\n", i, j, k);
-                            exit(1);
+                        if(k==0){
+                            if( fprintf(ptr_fp, "\t%.2x", cdb_ptr->cdb_data[k] ) < 0) {
+                                printf("Write cache file dump error in:");
+                                printf("\tset %d line %d byte %d\n", i, j, k);
+                                exit(1);
+                            }
                         }
+                        else{
+                            if( fprintf(ptr_fp, "%.2x", cdb_ptr->cdb_data[k] ) < 0) {
+                                printf("Write cache file dump error in:");
+                                printf("\tset %d line %d byte %d\n", i, j, k);
+                                exit(1);
+                            }
+                        }
+
                     }
-                    if( fprintf(ptr_fp, "\n\t\tTag: %.8x\n", cdb_ptr->cdb_tag ) < 0) {
+                    if( fprintf(ptr_fp, "\n\t\tTag:\t%.8x\n", cdb_ptr->cdb_tag ) < 0) {
                         printf("Write cache file dump error in:!\n");
                         printf("\tset %d line %d\n", i, j);
                         exit(1);
@@ -313,20 +374,10 @@ void cache_dump_file (cache_t* cache) {
             }
         }
     }
+
     fclose(ptr_fp);
 }
 
-
-boolean find_block (cache_t* cache, mem_addr_t *addr, unsigned mem_size) {
-
-    for(mem_addr_t block_addr = 0; block_addr < mem_size; block_addr += cache->block_size ) {
-        if(*addr >= block_addr && *addr < block_addr + cache->block_size) {
-            *addr = block_addr;
-            return TRUE;
-        }
-    }
-    return FALSE;
-}
 
 
 

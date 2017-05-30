@@ -51,7 +51,13 @@ boolean load (cache_t*, mem_addr_t, word_t*);
 
 boolean store (cache_t*, mem_addr_t, word_t*);
 
+
 boolean random_replace(word_t* main_mem, cache_t* cache, mem_addr_t addr);
+
+void copy_back_all(cache_t* cache, byte_t* main_mem);
+
+boolean random_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr);
+
 
 void lru_replace(word_t* , cache_t* , mem_addr_t );
 

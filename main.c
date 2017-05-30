@@ -94,7 +94,7 @@ int main()
     }
 
 
-    n_line = 0;
+    n_line = 1;
     while ((getline(&line, &buffer_size, inst_input_fp)) != -1) {
         printf("%s", line);
         fprintf(inst_output_fp, "%s", line);
@@ -161,7 +161,7 @@ int main()
                                 printf("--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
                             }
                             else{
-                                printf("Could not read address %.8x from cache for unknown reason at inst %s line %d\n", addr, inst, n_line);
+                                printf("Could not write on address %.8x from cache for unknown reason at inst %s line %d\n", addr, inst, n_line);
                                 exit(LOGIC_ERROR);
                             }
                         }
@@ -203,6 +203,7 @@ int main()
     }*/
 
     cache_dump_file(cache);
+    copy_back_all(cache, main_mem);
     mem_dump_file(main_mem);
     gen_sim_ram((unsigned*) main_mem);
     return 0;
