@@ -107,11 +107,12 @@ int main()
             if(it == 1) {
                 addr = strtol(args[0], NULL ,16);
                 if(load(cache, addr,p_register)) {
-                    fprintf(inst_output_fp, "--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr);
-                    printf("--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr);
+                    fprintf(inst_output_fp, "--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr << 2);
+                    printf("--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr << 2);
                 }
                 else {
-                    block_addr = addr >> 2;
+                    addr = addr >> 2;
+                    block_addr = addr;
                     if(find_block(cache, &block_addr, DEPTH)) {
                         if(!replace(main_mem, cache, block_addr)) {
                             printf("Could not replace block in address %.8x at inst %s on line %d\n", block_addr, inst, n_line);
@@ -119,17 +120,17 @@ int main()
                         }
                         else {
                             if(load(cache, addr,p_register)){
-                                fprintf(inst_output_fp, "--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr);
-                                printf("--> Read value %x from address %.8x\n",*((unsigned*) p_register), addr);
+                                fprintf(inst_output_fp, "--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr << 2);
+                                printf("--> Read value %x from address %.8x\n",*((unsigned*) p_register), addr << 2);
                             }
                             else{
-                                printf("Could not read address %.8x from cache for unknown reason at inst %s line %d\n", addr, inst, n_line);
+                                printf("Could not read address %.8x from cache for unknown reason at inst %s line %d\n", addr << 2, inst, n_line);
                                 exit(LOGIC_ERROR);
                             }
                         }
                     }
                     else {
-                        printf("Address: %.8x not in memory range\n", addr);
+                        printf("Address: %.8x not in memory range\n", addr << 2);
                         exit(LOGIC_ERROR);
                     }
                 }
@@ -145,11 +146,12 @@ int main()
                 addr = strtol(args[0], NULL ,16);
                 *((unsigned*) p_register) = strtol(args[1], NULL ,16);
                 if(store(cache, addr,p_register)) {
-                    fprintf(inst_output_fp, "--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
-                    printf("--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
+                    fprintf(inst_output_fp, "--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr << 2);
+                    printf("--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr << 2);
                 }
                 else {
-                    block_addr = addr >> 2;
+                    addr = addr >> 2;
+                    block_addr = addr;
                     if(find_block(cache, &block_addr, DEPTH)) {
                         if(!replace(main_mem, cache, block_addr)) {
                             printf("Could not replace block in address %x at inst %s line %d\n", block_addr, inst, n_line);
@@ -157,17 +159,17 @@ int main()
                         }
                         else {
                             if(store(cache, addr,p_register)) {
-                                fprintf(inst_output_fp, "--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
-                                printf("--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
+                                fprintf(inst_output_fp, "--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr << 2);
+                                printf("--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr << 2);
                             }
                             else{
-                                printf("Could not write on address %.8x from cache for unknown reason at inst %s line %d\n", addr, inst, n_line);
+                                printf("Could not write on address %.8x from cache for unknown reason at inst %s line %d\n", addr << 2, inst, n_line);
                                 exit(LOGIC_ERROR);
                             }
                         }
                     }
                     else {
-                        printf("Address: %.8x not in memory range\n", addr);
+                        printf("Address: %.8x not in memory range\n", addr << 2);
                         exit(LOGIC_ERROR);
                     }
                 }
