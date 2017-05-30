@@ -6,8 +6,8 @@
 #define LOAD_INST "LD"
 #define STORE_INST "ST"
 #define INST_FILENAME "inst.in"
-#define N_INST 32
-#define MAIN_MEM_SIZE 1024
+#define N_INST 128
+#define DEPTH 4096
 
 int main()
 {
@@ -23,9 +23,9 @@ int main()
     }
 
     for(int i = 0; i < N_INST;  i++) {
-        //inst_type = rand()%2;
-        inst_type = STORE_TYPE;
-        address = 4*(rand()%(MAIN_MEM_SIZE/4));
+        inst_type = rand()%2;
+        //inst_type = STORE_TYPE;
+        address = 4*(rand()%(DEPTH/4));
         value = rand();
 
         if(inst_type == LOAD_TYPE) {

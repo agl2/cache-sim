@@ -4,23 +4,6 @@
 #include "cache.h"
 #include "memory.h"
 
-/**============ CACHE PARAMETERS =============*/
-#define NUMBER_OF_SETS 2
-#define CACHE_SIZE 32
-#define BLOCK_SIZE 4
-#define NUMBER_OF_SETS 2
-#define FIFO_REPLACE 0
-#define RANDOM_REPLACE 1
-#define REPLACE_ALG RANDOM_REPLACE
-/**===========================================*/
-
-/**============ MEMORY PARAMETERS =============*/
-#define MEMORY_INPUT_FN "mem_gen/mem.dmp"
-#define MEMORY_OUTPUT_FN "mem_output.dmp"
-#define CACHE_OUTPUT_FN "cache.dmp"
-#define MAIN_MEM_SIZE 1024
-/**===========================================*/
-
 /**============ INSTRUCTIONS PARAMETERS =============*/
 #define INST_IN "inst_gen/inst.in"
 #define INST_OUT "inst_gen/inst.out"
@@ -47,7 +30,7 @@ void address_split_show(mem_addr_t addr, cache_t* cache) {
     printf("offset: %x\n", offset);
 }
 
-boolean replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr) {
+boolean replace(word_t* main_mem, cache_t* cache, mem_addr_t addr) {
     boolean replaced = FALSE;
 
     if(REPLACE_ALG == FIFO_REPLACE) {
@@ -63,7 +46,7 @@ boolean replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr) {
 int main()
 {
     cache_t* cache = (cache_t*) malloc(sizeof(cache_t));
-    byte_t* main_mem;
+    word_t* main_mem;
     FILE* inst_input_fp;
     FILE* inst_output_fp;
     unsigned n_line;
@@ -80,16 +63,16 @@ int main()
     set_cache_params(cache, CACHE_SIZE, BLOCK_SIZE, NUMBER_OF_SETS);
     init_cache(cache);
 
-    printf("word size: %lu bits\n", sizeof(word_t)*8);
-    printf("byte size: %lu bits\n", sizeof(byte_t)*8);
-    printf("mem_addr_t size: %lu bits\n", sizeof(mem_addr_t)*8);
-    printf("boolean size: %lu bits\n", sizeof(boolean)*8);
+    printf("word size: %u bits\n", sizeof(word_t)*8);
+    printf("byte size: %u bits\n", sizeof(byte_t)*8);
+    printf("mem_addr_t size: %u bits\n", sizeof(mem_addr_t)*8);
+    printf("boolean size: %u bits\n", sizeof(boolean)*8);
     printf("tag size: %u bits\n", cache->n_tag_bits);
     printf("block size: %u bits\n", cache->n_line_bits);
     printf("offset size: %u bits\n", cache->n_offset_bits);
 
 
-    main_mem = mem_load(MEMORY_INPUT_FN, MAIN_MEM_SIZE);
+    main_mem = mem_load();
 
 
 
@@ -128,8 +111,8 @@ int main()
                     printf("--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr);
                 }
                 else {
-                    block_addr = addr;
-                    if(find_block(cache, &block_addr, MAIN_MEM_SIZE)) {
+                    block_addr = addr >> 2;
+                    if(find_block(cache, &block_addr, DEPTH)) {
                         if(!replace(main_mem, cache, block_addr)) {
                             printf("Could not replace block in address %.8x at inst %s on line %d\n", block_addr, inst, n_line);
                             exit(LOGIC_ERROR);
@@ -166,8 +149,8 @@ int main()
                     printf("--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr);
                 }
                 else {
-                    block_addr = addr;
-                    if(find_block(cache, &block_addr, MAIN_MEM_SIZE)) {
+                    block_addr = addr >> 2;
+                    if(find_block(cache, &block_addr, DEPTH)) {
                         if(!replace(main_mem, cache, block_addr)) {
                             printf("Could not replace block in address %x at inst %s line %d\n", block_addr, inst, n_line);
                             exit(LOGIC_ERROR);
@@ -202,8 +185,8 @@ int main()
     }
     /*for(int i = 0; i < 64; i++) {
         printf("Random Replace: %d\n", i);
-        mem_addr_t addr = (mem_addr_t) rand()%MAIN_MEM_SIZE;
-        if(!find_block(cache, &addr, MAIN_MEM_SIZE)) {
+        mem_addr_t addr = (mem_addr_t) rand()%DEPTH;
+        if(!find_block(cache, &addr, DEPTH)) {
             printf("Address: %.8x not in memory range", addr);
         }
         random_replace(main_mem, cache, addr);
@@ -211,8 +194,8 @@ int main()
 
     /*for(int i = 0; i < 64; i++) {
         printf("Fifo Replace: %d\n", i);
-        mem_addr_t addr = (mem_addr_t) rand()%MAIN_MEM_SIZE;
-        if(!find_block(cache, &addr, MAIN_MEM_SIZE)) {
+        mem_addr_t addr = (mem_addr_t) rand()%DEPTH;
+        if(!find_block(cache, &addr, DEPTH)) {
             printf("Address: %.8x not in memory range", addr);
             exit(3);
         }
@@ -220,6 +203,7 @@ int main()
     }*/
 
     cache_dump_file(cache);
-    mem_dump_file(main_mem, MEMORY_OUTPUT_FN, MAIN_MEM_SIZE);
+    mem_dump_file(main_mem);
+    gen_sim_ram((unsigned*) main_mem);
     return 0;
 }

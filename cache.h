@@ -1,11 +1,26 @@
 #ifndef CACHE_H_INCLUDED
 #define CACHE_H_INCLUDED
 #include "memory.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
+#include <time.h>
+
+/**============ CACHE PARAMETERS =============*/
+#define CACHE_SIZE 64 //cache size in bytes
+#define BLOCK_SIZE 8 // block size in bytes
+#define NUMBER_OF_SETS 2
+#define FIFO_REPLACE 0
+#define RANDOM_REPLACE 1
+#define REPLACE_ALG FIFO_REPLACE
+#define CACHE_OUTPUT_FN "cache.dmp"
+/**===========================================*/
 
 typedef struct c_data_block {
     boolean cdb_valid;
     mem_addr_t cdb_tag;
-    byte_t* cdb_data;
+    word_t* cdb_data;
     unsigned set_number;
 
     struct c_data_block* prev;
@@ -36,11 +51,11 @@ boolean load (cache_t*, mem_addr_t, word_t*);
 
 boolean store (cache_t*, mem_addr_t, word_t*);
 
-boolean random_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr);
+boolean random_replace(word_t* main_mem, cache_t* cache, mem_addr_t addr);
 
-void lru_replace(byte_t* , cache_t* , mem_addr_t );
+void lru_replace(word_t* , cache_t* , mem_addr_t );
 
-boolean fifo_replace(byte_t* , cache_t* , mem_addr_t );
+boolean fifo_replace(word_t* , cache_t* , mem_addr_t );
 
 void cache_dump_file (cache_t* );
 

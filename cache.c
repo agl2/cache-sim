@@ -1,10 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
-#include <time.h>
-#include <byteswap.h>
 #include "cache.h"
+
 
 void set_cache_params(cache_t* cache, unsigned cache_size, unsigned block_size,  unsigned n_sets) {
 
@@ -15,15 +10,15 @@ void set_cache_params(cache_t* cache, unsigned cache_size, unsigned block_size, 
 
     srand(time(NULL));   // should only be called once
 
-    cache->block_size = block_size;
-    cache->cache_size = cache_size;
+    cache->block_size = block_size/4; //block size in words
+    cache->cache_size = cache_size/4; //cache size in words
     cache->n_sets = n_sets;
     cache->write_count = 0;
     cache->read_count = 0;
     cache->read_hit_count = 0;
     cache->write_hit_count = 0;
     cache->n_lines_per_set = n_lines_per_set;
-    cache->n_offset_bits = n_offset_bits;
+    cache->n_offset_bits = n_offset_bits - 2;
     cache->n_line_bits = n_line_bits;
     cache->n_tag_bits = n_tag_bits;
 }
@@ -57,7 +52,6 @@ boolean load (cache_t* cache, mem_addr_t addr, word_t* p_register) {
             found = TRUE;
             cache->read_hit_count++;
             memcpy(p_register, cdb_ptr->cdb_data + offset, sizeof(word_t));
-            *((int32_t*)p_register) = bswap_32(*((int32_t*)p_register));
         }
         cdb_ptr = cdb_ptr->next;
     }
@@ -79,7 +73,6 @@ boolean store (cache_t* cache, mem_addr_t addr, word_t* p_register) {
             found = TRUE;
             cache->write_hit_count++;
 
-            *((int32_t*)p_register) = bswap_32(*((int32_t*)p_register));
             memcpy(cdb_ptr->cdb_data + offset, p_register, sizeof(word_t));
         }
         cdb_ptr = cdb_ptr->next;
@@ -97,7 +90,7 @@ boolean store (cache_t* cache, mem_addr_t addr, word_t* p_register) {
 *           tag: Tag bits to be stored
 * @description: Creates a cache data block
 */
-c_data_block_t* alloc_cdb (cache_t* cache, const byte_t* data, unsigned set_number, mem_addr_t tag) {
+c_data_block_t* alloc_cdb (cache_t* cache, const word_t* data, unsigned set_number, mem_addr_t tag) {
 
     c_data_block_t* c_data_node;
 
@@ -107,7 +100,7 @@ c_data_block_t* alloc_cdb (cache_t* cache, const byte_t* data, unsigned set_numb
         printf("Memory allocation error while allocating c_data_node in function alloc_cdb \n");
         exit(1);
     }
-    c_data_node->cdb_data = (byte_t*) malloc(sizeof(byte_t)*cache->block_size);
+    c_data_node->cdb_data = (word_t*) malloc(sizeof(word_t)*cache->block_size);
     if(!c_data_node)
     {
         printf("Memory allocation error while allocating c_data_node->cdb_data in function alloc_cdb \n");
@@ -123,7 +116,7 @@ c_data_block_t* alloc_cdb (cache_t* cache, const byte_t* data, unsigned set_numb
     return c_data_node;
 }
 
-void copy_back (cache_t* cache, c_data_block_t* cdb_ptr, byte_t* main_mem, unsigned line){
+void copy_back (cache_t* cache, c_data_block_t* cdb_ptr, word_t* main_mem, unsigned line){
     mem_addr_t addr = (cdb_ptr->cdb_tag << (cache->n_line_bits + cache->n_offset_bits)) + (line << cache->n_offset_bits);
     memcpy(main_mem + addr, cdb_ptr->cdb_data, cache->block_size);
 }
@@ -135,7 +128,7 @@ void copy_back (cache_t* cache, c_data_block_t* cdb_ptr, byte_t* main_mem, unsig
 *           addr: Address of block to be inserted in cache
 * @description: Inserts a block in cache replacing an older one randomly
 */
-boolean random_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr)  {
+boolean random_replace(word_t* main_mem, cache_t* cache, mem_addr_t addr)  {
 
     ///Split the address bits in tag and line
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
@@ -202,7 +195,7 @@ boolean random_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr)  {
     return replaced;
 }
 
-void lru_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr)  {
+void lru_replace(word_t* main_mem, cache_t* cache, mem_addr_t addr)  {
 
 }
 
@@ -214,7 +207,7 @@ void lru_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr)  {
 *           addr: Address of block to be inserted in cache
 * @description: Inserts a block in cache replacing an older one using FIFO algorithm
 */
-boolean fifo_replace(byte_t* main_mem, cache_t* cache, mem_addr_t addr) {
+boolean fifo_replace(word_t* main_mem, cache_t* cache, mem_addr_t addr) {
     ///Split the address bits in tag and line
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
     unsigned line = (addr << cache->n_tag_bits) >> (cache->n_tag_bits + cache->n_offset_bits);
