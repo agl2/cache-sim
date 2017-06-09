@@ -5,8 +5,9 @@
 #include <time.h>
 #include <stdint.h>
 /**============ MEMORY PARAMETERS =============*/
-#define MEMORY_INPUT_FILE "mem_gen/ram.dmp"
-#define MEMORY_OUTPUT_FILE "mem_output.dmp"
+#define MEMORY_INPUT_FILE "../mem_files/ram.dmp"
+#define MEMORY_OUTPUT_FILE "../mem_files/ram_output.dmp"
+#define MEMORY_OUTPUT_FILE_MIF "../mem_files/ram_output.mif"
 #define DEPTH 4096
 #define WIDTH 32
 /**===========================================*/
@@ -17,7 +18,7 @@ typedef enum radix {
     BIN
 } radix;
 
-#define ADDRESS_RADIX UNS // UNS : 0; HEX : 1; BIN : 2;
+#define ADDRESS_RADIX HEX // UNS : 0; HEX : 1; BIN : 2;
 #define DATA_RADIX HEX  //  UNS : 0; HEX : 1; BIN : 2;
 
 typedef unsigned int mem_addr_t;

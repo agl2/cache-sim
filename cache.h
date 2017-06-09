@@ -8,9 +8,9 @@
 #include <time.h>
 
 /**============ CACHE PARAMETERS =============*/
-#define CACHE_SIZE 64 //cache size in bytes
-#define BLOCK_SIZE 8 // block size in bytes
-#define NUMBER_OF_SETS 2
+#define CACHE_SIZE 1024 //cache size in bytes
+#define BLOCK_SIZE 32 // block size in bytes
+#define NUMBER_OF_SETS 4
 #define FIFO_REPLACE 0
 #define RANDOM_REPLACE 1
 #define REPLACE_ALG FIFO_REPLACE
@@ -19,7 +19,7 @@
 
 typedef struct c_data_block {
     boolean cdb_valid;
-    mem_addr_t cdb_tag;
+    unsigned cdb_tag;
     word_t* cdb_data;
     unsigned set_number;
 

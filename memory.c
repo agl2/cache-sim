@@ -68,7 +68,7 @@ int gen_sim_ram(word_t *data_array)
 
 
     /* Part C */
-    if((ptr_fp = fopen("ram.mif", "wb")) == NULL)
+    if((ptr_fp = fopen(MEMORY_OUTPUT_FILE_MIF, "wb")) == NULL)
     {
         printf("Unable to open file!\n");
         exit(2);

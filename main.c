@@ -5,8 +5,8 @@
 #include "memory.h"
 
 /**============ INSTRUCTIONS PARAMETERS =============*/
-#define INST_IN "inst_gen/inst.in"
-#define INST_OUT "inst_gen/inst.out"
+#define INST_IN "../inst_gen/inst.in"
+#define INST_OUT "inst.out"
 #define LOAD_INST "LD"
 #define STORE_INST "ST"
 /**===========================================*/
@@ -106,12 +106,12 @@ int main()
         if(strcmp(inst, LOAD_INST) == 0) {
             if(it == 1) {
                 addr = strtol(args[0], NULL ,16);
+                addr = addr >> 2;
                 if(load(cache, addr,p_register)) {
                     fprintf(inst_output_fp, "--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr << 2);
                     printf("--> Read value %.8x from address %.8x\n", *((unsigned*) p_register), addr << 2);
                 }
                 else {
-                    addr = addr >> 2;
                     block_addr = addr;
                     if(find_block(cache, &block_addr, DEPTH)) {
                         if(!replace(main_mem, cache, block_addr)) {
@@ -144,13 +144,13 @@ int main()
         else if (strcmp(inst, STORE_INST) == 0) {
             if(it == 2) {
                 addr = strtol(args[0], NULL ,16);
+                addr = addr >> 2;
                 *((unsigned*) p_register) = strtol(args[1], NULL ,16);
                 if(store(cache, addr,p_register)) {
                     fprintf(inst_output_fp, "--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr << 2);
                     printf("--> Written value %.8x on address %.8x\n", *((unsigned*) p_register), addr << 2);
                 }
                 else {
-                    addr = addr >> 2;
                     block_addr = addr;
                     if(find_block(cache, &block_addr, DEPTH)) {
                         if(!replace(main_mem, cache, block_addr)) {

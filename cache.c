@@ -40,14 +40,14 @@ void init_cache(cache_t* cache) {
 boolean load (cache_t* cache, mem_addr_t addr, word_t* p_register) {
 
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
-    unsigned line = (addr << cache->n_tag_bits + 2) >> (cache->n_tag_bits + 2 + cache->n_offset_bits);
+    unsigned line = (addr << (cache->n_tag_bits + 2)) >> (cache->n_tag_bits + cache->n_offset_bits + 2);
     unsigned offset = (addr << (cache->n_tag_bits + 2 + cache->n_line_bits)) >> (cache->n_tag_bits + 2 + cache->n_line_bits);
     boolean found = FALSE;
 
     cache->read_count++;
     c_data_block_t *cdb_ptr = cache->c_line_head[line];
 
-    while(cdb_ptr != NULL) {
+    while(cdb_ptr != NULL && !found) {
         if(cdb_ptr->cdb_valid && cdb_ptr->cdb_tag == tag) {
             found = TRUE;
             cache->read_hit_count++;
@@ -61,14 +61,14 @@ boolean load (cache_t* cache, mem_addr_t addr, word_t* p_register) {
 boolean store (cache_t* cache, mem_addr_t addr, word_t* p_register) {
 
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
-    unsigned line = (addr << cache->n_tag_bits + 2) >> (cache->n_tag_bits + cache->n_offset_bits + 2);
+    unsigned line = (addr << (cache->n_tag_bits + 2)) >> (cache->n_tag_bits + cache->n_offset_bits + 2);
     unsigned offset = (addr << (cache->n_tag_bits + 2 + cache->n_line_bits)) >> (cache->n_tag_bits + 2 + cache->n_line_bits);
     boolean found = FALSE;
 
     cache->write_count++;
     c_data_block_t *cdb_ptr = cache->c_line_head[line];
 
-    while(cdb_ptr != NULL) {
+    while(cdb_ptr != NULL && !found) {
         if(cdb_ptr->cdb_valid && cdb_ptr->cdb_tag == tag) {
             found = TRUE;
             cache->write_hit_count++;
@@ -104,7 +104,7 @@ boolean find_block (cache_t* cache, mem_addr_t *addr, unsigned mem_size) {
 *           tag: Tag bits to be stored
 * @description: Creates a cache data block
 */
-c_data_block_t* alloc_cdb (cache_t* cache, const word_t* data, unsigned set_number, mem_addr_t tag) {
+c_data_block_t* alloc_cdb (cache_t* cache, const word_t* data, unsigned set_number, unsigned tag) {
 
     c_data_block_t* c_data_node;
 
@@ -165,7 +165,7 @@ boolean random_replace(word_t* main_mem, cache_t* cache, mem_addr_t addr)  {
 
     ///Split the address bits in tag and line
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
-    unsigned line = (addr << cache->n_tag_bits + 2) >> (cache->n_tag_bits + 2 + cache->n_offset_bits);
+    unsigned line = (addr << (cache->n_tag_bits + 2)) >> (cache->n_tag_bits + 2 + cache->n_offset_bits);
 
     boolean replaced = FALSE;
 
@@ -243,60 +243,47 @@ void lru_replace(word_t* main_mem, cache_t* cache, mem_addr_t addr)  {
 boolean fifo_replace(word_t* main_mem, cache_t* cache, mem_addr_t addr) {
     ///Split the address bits in tag and line
     unsigned tag = addr >> (cache->n_line_bits + cache->n_offset_bits);
-    unsigned line = (addr << cache->n_tag_bits + 2) >> (cache->n_tag_bits + cache->n_offset_bits + 2);
+    unsigned line = (addr << (cache->n_tag_bits + 2)) >> (cache->n_tag_bits + cache->n_offset_bits + 2);
+    unsigned count;
 
-    boolean replaced = FALSE;
+    boolean need_copy_back = FALSE;
 
     ///Create two pointers, one pointing for the head of the first list of data blocks and another buffer to store previous element on the list.
-    c_data_block_t *cdb_ptr = cache->c_line_head[line];
+    c_data_block_t *cdb_ptr = NULL;
+
     c_data_block_t *cdb_ptr_buff = NULL;
 
-    ///This loop search for a blank position, if there is one, the block is inserted on it.
-    for(int i = 0; i < cache->n_sets; i++) {
-        if(cdb_ptr == NULL) {
-            cdb_ptr = alloc_cdb (cache, main_mem + addr , i, tag);
-            if(cdb_ptr_buff != NULL) {
-                cdb_ptr->next = cdb_ptr_buff;
-                cdb_ptr_buff->prev = cdb_ptr;
-            }
-            cdb_ptr->cdb_valid = TRUE;
-            replaced = TRUE;
-            cache->c_line_head[line] = cdb_ptr;
-        }
-        else {
-            cdb_ptr_buff = cdb_ptr;
-            cdb_ptr = cdb_ptr->next;
-        }
+    if(cache->c_line_head[line] == NULL) {
+        cdb_ptr = alloc_cdb(cache, main_mem + addr , 0, tag);
+        cache->c_line_head[line] = cdb_ptr;
+        cdb_ptr->cdb_valid = TRUE;
+    }
+    else {
+        cdb_ptr = alloc_cdb(cache, main_mem + addr , cache->c_line_head[line]->set_number+1 , tag);
+        cache->c_line_head[line]->prev = cdb_ptr;
+        cdb_ptr->next = cache->c_line_head[line];
+        cache->c_line_head[line] = cdb_ptr;
+        cdb_ptr->cdb_valid = TRUE;
     }
 
     /**If the previous loop could not find a blank position,
     * then this block of code selects the older data block in the cache line
     * and replaces it references on the list for the new one references
     */
-    if(!replaced) {
-        cdb_ptr_buff = cache->c_line_head[line];
-        ///Gets the last element from the list
-        while(cdb_ptr_buff->next != NULL) {
-                cdb_ptr_buff = cdb_ptr_buff->next;
-        }
-        ///Allocates a new data block
-        cdb_ptr = alloc_cdb (cache, main_mem + addr , cdb_ptr_buff->set_number, tag);
-        ///Points to the first element on the list
-        cdb_ptr->next = cache->c_line_head[line];
-        ///Points the current head of the list previous pointer to the new element
-        cache->c_line_head[line]->prev = cdb_ptr;
-        ///Points the head of the list to the new element
-        cache->c_line_head[line] = cdb_ptr;
-        ///Points the next of new last element of the list to null
-        cdb_ptr_buff->prev->next = NULL;
-        ///Set valid bit to 1
-        cdb_ptr->cdb_valid = TRUE;
-        ///Set replaced to true
-        replaced = TRUE;
-
-        copy_back(cache, cdb_ptr_buff, main_mem, line);
+    cdb_ptr_buff = cache->c_line_head[line];
+    count = 0;
+    while(cdb_ptr_buff->next != NULL) {
+            cdb_ptr_buff = cdb_ptr_buff->next;
+            count++;
     }
-    return replaced;
+    if(count >= NUMBER_OF_SETS) need_copy_back = TRUE;
+
+    if(need_copy_back) {
+        cdb_ptr_buff->prev->next = NULL;
+        copy_back(cache, cdb_ptr_buff, main_mem, line);
+        need_copy_back = FALSE;
+    }
+    return !need_copy_back;
 }
 
 void cache_dump_file (cache_t* cache) {
